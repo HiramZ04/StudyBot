@@ -1,8 +1,8 @@
 import type { PageView } from "../features/chatbot/schema";
 
 interface NavBarProps {
-    currentView: PageView;
-    onChangeView: (view: PageView) => void;
+    page: PageView;
+    setPage: (view: PageView) => void;
 }
 
 const tabs: { label: string; view: PageView }[] = [
@@ -12,14 +12,14 @@ const tabs: { label: string; view: PageView }[] = [
     { label: "Files", view: "files" },
 ];
 
-export default function NavBar({ currentView, onChangeView }: NavBarProps) {
+export default function NavBar({ page, setPage }: NavBarProps) {
     return (
         <nav className="navbar">
             {tabs.map((tab) => (
                 <button
                     key={tab.view}
-                    onClick={() => onChangeView(tab.view)}
-                    className={currentView === tab.view ? "active" : ""}
+                    onClick={() => setPage(tab.view)}
+                    aria-current={page === tab.view ? "page" : undefined}
                 >
                     {tab.label}
                 </button>

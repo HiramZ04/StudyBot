@@ -1,8 +1,8 @@
-import type { Response, FileEntry } from "./schema";
+import type { BotResponse, FileEntry } from "./schema";
 
 const BASE_URL = "/api";
 
-export async function chat(message: string): Promise<Response> {
+export async function chat(message: string): Promise<BotResponse> {
     const res = await fetch(`${BASE_URL}/chat`, {
         method: "POST",
         headers: {
@@ -17,7 +17,7 @@ export async function chat(message: string): Promise<Response> {
     return res.json();
 }
 
-export async function summary(topic?: string): Promise<Response> {
+export async function summary(topic?: string): Promise<BotResponse> {
     const res = await fetch(`${BASE_URL}/summary`, {
         method: "POST",
         headers: {
@@ -32,7 +32,7 @@ export async function summary(topic?: string): Promise<Response> {
     return res.json();
 }
 
-export async function quiz(topic?: string, num_questions?: number): Promise<Response> {
+export async function quiz(topic?: string, num_questions?: number): Promise<BotResponse> {
     const res = await fetch(`${BASE_URL}/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

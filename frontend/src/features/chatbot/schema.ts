@@ -10,7 +10,7 @@ export interface Source {
     score: number;
 }
 
-export interface Response {
+export interface BotResponse {
     response: string;
     sources: Source[];
 }
