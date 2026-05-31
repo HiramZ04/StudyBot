@@ -41,7 +41,7 @@ app = FastAPI(title="StudyBot API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -59,19 +59,70 @@ class QuizRequest(BaseModel):
     num_questions: int = 5
 
 
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    """Upload a file to the database (in memory)"""
+    if not file.filename:
+        return {"error": "No filename provided"}
+    
+    try:
+        contents = await file.read()
+        results = assistant.add_documents_from_content([(file.filename, contents)])
+        if results.get(file.filename):
+            return {
+                "status": "success",
+                "filename": file.filename,
+                "message": f"File '{file.filename}' uploaded and indexed"
+            }
+        else:
+            return {
+                "status": "error",
+                "filename": file.filename,
+                "message": f"File '{file.filename}' is not supported or is empty"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "filename": file.filename,
+            "message": str(e)
+        }
+
+
+@app.delete("/files/{filename}")
+def delete_file(filename: str):
+    """Delete a specific file from the database."""
+    success = assistant.remove_file(filename)
+    
+    if success:
+        return {
+            "status": "success",
+            "filename": filename,
+            "message": f"File '{filename}' removed from database"
+        }
+    else:
+        return {
+            "status": "error",
+            "filename": filename,
+            "message": f"File '{filename}' not found in database"
+        }
+
+
 @app.post("/chat")
 def chat(body: ChatRequest):
-    return {"response": assistant.ask(body.message)}
+    result = assistant.ask(body.message)
+    return result
 
 
 @app.post("/summary")
 def summary(body: SummaryRequest):
-    return {"response": assistant.summarize(body.topic)}
+    result = assistant.summarize(body.topic)
+    return result
 
 
 @app.post("/quiz")
 def quiz(body: QuizRequest):
-    return {"response": assistant.generate_quiz(body.topic, body.num_questions)}
+    result = assistant.generate_quiz(body.topic, body.num_questions)
+    return result
 
 
 @app.get("/files")

@@ -10,7 +10,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from openai import OpenAI
 
-DEFAULT_UPLOAD_DIR = "uploads"
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 DEFAULT_LLM_MODEL = "gpt-4.1-mini"
 DEFAULT_CHUNK_SIZE = 512
@@ -38,7 +37,6 @@ def resolve_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
         "model": config.get("model", DEFAULT_LLM_MODEL),
         "vision_model": config.get("vision_model") or config.get("model", DEFAULT_LLM_MODEL),
         "embedding_model": config.get("embedding_model", DEFAULT_EMBEDDING_MODEL),
-        "upload_dir": config.get("upload_dir", DEFAULT_UPLOAD_DIR),
         "top_k": _parse_int_setting(
             "TOP_K", 
             config.get("top_k", DEFAULT_TOP_K)),
@@ -62,9 +60,9 @@ def resolve_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     return resolved
 
 
-def _extract_pdf(file_path: str) -> str:
+def _extract_pdf(file_content: bytes) -> str:
     import fitz
-    doc = fitz.open(file_path)
+    doc = fitz.open(stream=file_content, filetype="pdf")
     pages = []
     for i, page in enumerate(doc, 1):
         text = page.get_text()
@@ -73,9 +71,10 @@ def _extract_pdf(file_path: str) -> str:
     return "\n\n".join(pages)
 
 
-def _extract_pptx(file_path: str) -> str:
+def _extract_pptx(file_content: bytes) -> str:
+    from io import BytesIO
     from pptx import Presentation
-    prs = Presentation(file_path)
+    prs = Presentation(BytesIO(file_content))
     slides = []
     for i, slide in enumerate(prs.slides, 1):
         slide_text = []
@@ -88,56 +87,6 @@ def _extract_pptx(file_path: str) -> str:
         if slide_text:
             slides.append(f"[Slide {i}]\n" + "\n".join(slide_text))
     return "\n\n".join(slides)
-
-
-def load_documents(
-    upload_dir: str = DEFAULT_UPLOAD_DIR
-) -> list[Document]:
-    """Loads study materials from the uploads folder.
-
-    Supports .txt, .md, .pdf, .pptx
-    Each file becomes one LangChain Document with source metadata. The folder
-    is created automatically if it does not exist.
-    """
-    documents = []
-    upload_path = Path(upload_dir)
-
-    if not upload_path.exists():
-        upload_path.mkdir(parents=True, exist_ok=True)
-        return documents
-
-    for file_path in sorted(upload_path.rglob("*")):
-        if not file_path.is_file():
-            continue
-        ext = file_path.suffix.lower()
-        if ext not in SUPPORTED_EXTENSIONS:
-            continue
-
-        try:
-            if ext in {".txt", ".md"}:
-                content = file_path.read_text(encoding="utf-8", errors="replace")
-                doc_type = "text"
-            elif ext == ".pdf":
-                content = _extract_pdf(str(file_path))
-                doc_type = "pdf"
-            elif ext == ".pptx":
-                content = _extract_pptx(str(file_path))
-                doc_type = "presentation"
-            else:
-                continue
-
-            if content.strip():
-                metadata = {
-                    "source": str(file_path),
-                    "type": doc_type,
-                    "filename": file_path.name,
-                }
-                documents.append(Document(page_content=content, metadata=metadata))
-                print(f"  [{doc_type}] {file_path.name}")
-        except Exception as e:
-            print(f"  Warning: could not load {file_path.name}: {e}")
-
-    return documents
 
 
 def split_documents(
@@ -266,17 +215,26 @@ class Assistant:
 
         return response
 
-    def summarize(self, topic: str | None = None) -> str:
-        """Generates a structured study summary, optionally focused on a topic."""
+    def summarize(self, topic: str | None = None) -> dict[str, Any]:
+        """Generates a structured study summary, optionally focused on a topic.
+        
+        Returns the response and a list of sources used for the summary 
+        """
         if not self.chunks:
-            return "No study materials are loaded."
+            return {
+                "response": "No study materials are loaded.",
+                "sources": []
+            }
 
         query = "overview main topics key concepts" if topic is None else f"{topic} summary overview"
         k = min(self.top_k * 2, len(self.chunks))
         retrieved = retrieve(query, self.index, self.model, self.chunks, k=k)
 
         if not retrieved or retrieved[0]["score"] == 0:
-            return "No relevant material found to summarize."
+            return {
+                "response": "No relevant material found to summarize.",
+                "sources": []
+            }
 
         context = "\n\n".join([
             f"[Source: {r['metadata']['filename']}]\n{r['text']}"
@@ -299,19 +257,43 @@ class Assistant:
         self.history.append({"role": "user", "content": f"<Context>{context}</Context><Question>{prompt}</Question>"})
         self.history.append({"role": "assistant", "content": response})
 
-        return response
+        sources = []
+        seen = set()
+        for r in retrieved:
+            filename = r['metadata']['filename']
+            if filename not in seen:
+                seen.add(filename)
+                sources.append({
+                    "filename": filename,
+                    "type": r['metadata']['type'],
+                    "score": r['score']
+                })
 
-    def generate_quiz(self, topic: str | None = None, num_questions: int = 5) -> str:
-        """Generates multiple-choice quiz questions from the study materials."""
+        return {
+            "response": response,
+            "sources": sources
+        }
+
+    def generate_quiz(self, topic: str | None = None, num_questions: int = 5) -> dict[str, Any]:
+        """Generates multiple-choice quiz questions from the study materials.
+        
+        Returns the generated quiz and a list of sources used for question generation.
+        """
         if not self.chunks:
-            return "No study materials are loaded."
+            return {
+                "response": "No study materials are loaded.",
+                "sources": []
+            }
 
         query = topic or "key concepts important facts definitions"
         k = min(self.top_k * 2, len(self.chunks))
         retrieved = retrieve(query, self.index, self.model, self.chunks, k=k)
 
         if not retrieved or retrieved[0]["score"] == 0:
-            return "No relevant material found to generate quiz questions."
+            return {
+                "response": "No relevant material found to generate quiz questions.",
+                "sources": []
+            }
 
         context = "\n\n".join([
             f"[Source: {r['metadata']['filename']}]\n{r['text']}"
@@ -335,7 +317,23 @@ class Assistant:
         self.history.append({"role": "user", "content": f"<Context>{context}</Context><Question>{prompt}</Question>"})
         self.history.append({"role": "assistant", "content": response})
 
-        return response
+        # Extract unique sources
+        sources = []
+        seen = set()
+        for r in retrieved:
+            filename = r['metadata']['filename']
+            if filename not in seen:
+                seen.add(filename)
+                sources.append({
+                    "filename": filename,
+                    "type": r['metadata']['type'],
+                    "score": r['score']
+                })
+
+        return {
+            "response": response,
+            "sources": sources
+        }
 
     def list_files(self) -> str:
         """Returns a formatted list of all loaded study materials."""
@@ -365,6 +363,96 @@ class Assistant:
                 })
         return files
 
+    def clear(self) -> None:
+        """Resets all documents, chunks, history, and FAISS index."""
+        self.docs = []
+        self.chunks = []
+        self.history = []
+        dim = self.model.get_sentence_embedding_dimension()
+        self.index = faiss.IndexFlatIP(dim)
+
+    def remove_file(self, filename: str) -> bool:
+        """Removes a file by filename and rebuilds the index."""
+        # Select all documents except the one that matches the filename to remove
+        initial_count = len(self.docs)
+        self.docs = [doc for doc in self.docs if doc.metadata["filename"] != filename]
+        if len(self.docs) == initial_count:
+            return False
+        self.history = []
+        
+        # Remake chunks and index
+        self.chunks = split_documents(
+            self.docs,
+            chunk_size=self.config["chunk_size"],
+            chunk_overlap=self.config["chunk_overlap"],
+        )
+        if self.chunks:
+            self.index = build_index(self.chunks, self.model)
+        else:
+            dim = self.model.get_sentence_embedding_dimension()
+            self.index = faiss.IndexFlatIP(dim)
+        return True
+
+    def add_documents_from_content(self, files: list[tuple[str, bytes]]) -> dict[str, bool]:
+        """Adds documents from file content (filename, bytes) and rebuilds the index.
+        
+        Returns a dictionary mapping filenames to boolean values indicating success.
+        """
+        results = {}
+        new_docs = []
+        
+        for filename, file_content in files:
+            if any(doc.metadata["filename"] == filename for doc in self.docs):
+                results[filename] = False
+                continue
+
+            ext = Path(filename).suffix.lower()
+            if ext not in SUPPORTED_EXTENSIONS:
+                results[filename] = False
+                continue
+            
+            try:
+                if ext in {".txt", ".md"}:
+                    content = file_content.decode(encoding="utf-8", errors="replace")
+                    doc_type = "text"
+                elif ext == ".pdf":
+                    content = _extract_pdf(file_content)
+                    doc_type = "pdf"
+                elif ext == ".pptx":
+                    content = _extract_pptx(file_content)
+                    doc_type = "presentation"
+                else:
+                    results[filename] = False
+                    continue
+                
+                if content.strip():
+                    metadata = {
+                        "source": filename,
+                        "type": doc_type,
+                        "filename": filename,
+                    }
+                    doc = Document(page_content=content, metadata=metadata)
+                    new_docs.append(doc)
+                    results[filename] = True
+                else:
+                    results[filename] = False
+            except Exception as e:
+                print(f"Error: could not load {filename} for upload: {e}")
+                results[filename] = False
+        
+        # If successful, add new documents and rebuild chunks and index
+        if new_docs:
+            self.docs.extend(new_docs)
+            
+            self.chunks = split_documents(
+                self.docs,
+                chunk_size=self.config["chunk_size"],
+                chunk_overlap=self.config["chunk_overlap"],
+            )
+            self.index = build_index(self.chunks, self.model)
+        
+        return results
+
     @classmethod
     def from_config(cls, config: dict[str, Any] | None = None) -> "Assistant":
         """Initializes the full pipeline and returns a ready Assistant.
@@ -374,13 +462,8 @@ class Assistant:
         """
         resolved_config = resolve_config(config)
 
-        print("Loading documents...")
-        docs = load_documents(
-            upload_dir=resolved_config["upload_dir"]
-        )
-        print(f"  Loaded {len(docs)} documents")
-        if not docs:
-            print("  (No documents found — add files to uploads/ and restart)")
+        print("Initializing...")
+        docs = []
 
         print("Splitting into chunks...")
         chunks = split_documents(
@@ -399,7 +482,7 @@ class Assistant:
         else:
             dim = embedding_model.get_sentence_embedding_dimension()
             index = faiss.IndexFlatIP(dim)
-            print("  (Empty index — no documents loaded)")
+            print("(Empty index, no documents loaded)")
 
         client_kwargs = {}
         if resolved_config["api_key"]:
