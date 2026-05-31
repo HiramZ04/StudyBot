@@ -30,11 +30,15 @@ export default function SummaryPage() {
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Enter a topic to summarize..."
             />
-            <button onClick={handleSubmit} disabled={loading}>
+            <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
                 {loading ? "Summarizing..." : "Summarize"}
             </button>
-            {error && <p>{error}</p>}
-            {response && <p>{response.response}</p>}
+            {error && <p className="error">{error}</p>}
+            {response && (
+                <div className="card">
+                    <p className="response-text">{response.response}</p>
+                </div>
+            )}
         </div>
     );
 }

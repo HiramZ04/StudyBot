@@ -57,16 +57,20 @@ export default function FilesPage() {
     <div>
       <h1>Files</h1>
       <input type="file" accept=".pdf,.txt,.md,.pptx" onChange={handleUpload} disabled={loading} />
-      <button onClick={handleClear}>Clear All</button>
-      {error && <p>{error}</p>}
+      <button className="btn-danger" onClick={handleClear}>
+        Clear All
+      </button>
+      {error && <p className="error">{error}</p>}
       {files.length === 0 ? (
         <p>No files loaded.</p>
       ) : (
         files.map((f) => (
-          <div key={f.fileName}>
-            <span>{f.fileName}</span>
-            <span>{f.type}</span>
-            <button onClick={() => handleDelete(f.fileName)}>Delete</button>
+          <div className="file-row"key={f.fileName}>
+            <span className="file-name">{f.fileName}</span>
+            <span className="file-type">{f.type}</span>
+            <button className="btn-danger" onClick={() => handleDelete(f.fileName)}>
+              Delete
+            </button>
           </div>
         ))
       )}

@@ -37,11 +37,15 @@ export default function QuizPage() {
         max={20}
         onChange={(e) => setNumQuestions(Number(e.target.value))}
       />
-      <button onClick={handleSubmit} disabled={loading}>
+      <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
         {loading ? "Generating..." : "Generate Quiz"}
       </button>
-      {error && <p>{error}</p>}
-      {response && <p>{response.response}</p>}
+      {error && <p className="error">{error}</p>}
+      {response && (
+        <div className="card">
+          <p className="response-text">{response.response}</p>
+        </div>
+      )}
     </div>
   );
 }

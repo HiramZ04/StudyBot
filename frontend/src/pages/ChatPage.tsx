@@ -31,16 +31,20 @@ export default function ChatPage() {
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Ask a question about your study materials..."
             />
-            <button onClick={handleSubmit} disabled={loading}>
-                {loading ? "Thinking..." : "Ask"}
+            <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
+                {error && <p className="error">{error}</p>}
             </button>
-            {error && <p>{error}</p>}
+            {error && <p className="error">{error}</p>}
             {response && (
-                <div>
-                <p>{response.response}</p>
-                {response.sources.map((s) => (
-                    <span key={s.filename}>{s.filename}</span>
-                ))}
+                <div className="card">
+                    <p className="response-text">{response.response}</p>
+                    <div className="sources">
+                        {response.sources.map((s) => (
+                            <span key={s.filename} className="source-chip">
+                                {s.filename}
+                            </span>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
