@@ -16,7 +16,7 @@ DEFAULT_CHUNK_SIZE = 512
 DEFAULT_CHUNK_OVERLAP = 64
 DEFAULT_TOP_K = 5
 
-SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf", ".pptx"}
+SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf", ".pptx", ".docx"}
 
 
 def _parse_int_setting(name: str, value: Any) -> int:
@@ -88,6 +88,18 @@ def _extract_pptx(file_content: bytes) -> str:
             slides.append(f"[Slide {i}]\n" + "\n".join(slide_text))
     return "\n\n".join(slides)
 
+def _extract_docx(file_content: bytes) -> str:
+    from io import BytesIO
+    from docx import Document as DocxDocument
+    doc = DocxDocument(BytesIO(file_content))
+    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+
+    for table in doc.tables:
+        for row in table.rows:
+            row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+            if row_text:
+                paragraphs.append(row_text)
+    return "\n\n".join(paragraphs)
 
 def split_documents(
     docs: list[Document],
@@ -440,6 +452,9 @@ class Assistant:
                 elif ext == ".pptx":
                     content = _extract_pptx(file_content)
                     doc_type = "presentation"
+                elif ext == ".docx":
+                    content = _extract_docx(file_content)
+                    doc_type = "document"
                 else:
                     results[filename] = False
                     continue

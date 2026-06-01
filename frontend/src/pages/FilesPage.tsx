@@ -56,7 +56,7 @@ export default function FilesPage() {
   return (
     <div>
       <h1>Files</h1>
-      <input type="file" accept=".pdf,.txt,.md,.pptx" onChange={handleUpload} disabled={loading} />
+      <input type="file" accept=".pdf,.txt,.md,.pptx,.docx" onChange={handleUpload} disabled={loading} />
       <button className="btn-danger" onClick={handleClear}>
         Clear All
       </button>

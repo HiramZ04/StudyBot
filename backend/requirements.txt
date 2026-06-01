@@ -8,6 +8,7 @@ sentence-transformers
 torch
 pymupdf
 python-pptx
+python-docx
 Pillow
 fastapi[standard]
 uvicorn
