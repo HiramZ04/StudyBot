@@ -15,4 +15,4 @@ export interface BotResponse {
     sources: Source[];
 }
 
-export type PageView = "chat" | "summary" | "quiz" | "files";
+export type CenterTab = "chat" | "summary"
