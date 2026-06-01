@@ -2,11 +2,13 @@
 StudyBot API Server
 
 Endpoints:
-    POST   /chat          — Q&A from study materials
-    POST   /summary       — Generate a summary (optional topic)
-    POST   /quiz          — Generate quiz questions (optional topic)
-    GET    /files         — List loaded study materials
-    DELETE /clear         — Clear history and unload all documents
+    POST   /api/upload    — Upload a file to be indexed
+    POST   /api/chat      — Q&A from study materials
+    POST   /api/summary   — Generate a summary (optional topic)
+    POST   /api/quiz      — Generate quiz questions (optional topic)
+    GET    /api/files     — List loaded study materials
+    DELETE /api/files/{filename} — Delete a specific file
+    DELETE /api/clear     — Clear history and unload all documents
 """
 
 import os
@@ -15,6 +17,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -47,15 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static frontend serving
-index_path = Path("frontend/dist/index.html")
-if not index_path.exists():
-    raise RuntimeError("ERROR: Frontend not built. Run 'npm run build' in the frontend directory before starting.")
-
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
-
 # LLM Assistant section
-
 assistant = Assistant.from_config(load_config_from_env())
 
 class ChatRequest(BaseModel):
@@ -69,7 +64,7 @@ class QuizRequest(BaseModel):
     num_questions: int = 5
 
 
-@app.post("/upload")
+@app.post("/api/upload")
 async def upload(file: UploadFile = File(...)):
     """Upload a file to the database (in memory)"""
     if not file.filename:
@@ -98,7 +93,7 @@ async def upload(file: UploadFile = File(...)):
         }
 
 
-@app.delete("/files/{filename}")
+@app.delete("/api/files/{filename}")
 def delete_file(filename: str):
     """Delete a specific file from the database."""
     success = assistant.remove_file(filename)
@@ -117,25 +112,25 @@ def delete_file(filename: str):
         }
 
 
-@app.post("/chat")
+@app.post("/api/chat")
 def chat(body: ChatRequest):
     result = assistant.ask(body.message)
     return result
 
 
-@app.post("/summary")
+@app.post("/api/summary")
 def summary(body: SummaryRequest):
     result = assistant.summarize(body.topic)
     return result
 
 
-@app.post("/quiz")
+@app.post("/api/quiz")
 def quiz(body: QuizRequest):
     result = assistant.generate_quiz(body.topic, body.num_questions)
     return result
 
 
-@app.get("/files")
+@app.get("/api/files")
 def files():
     raw = assistant.list_files_json()
     # different on frontend
@@ -149,7 +144,19 @@ def files():
     ]
 
 
-@app.delete("/clear")
+@app.delete("/api/clear")
 def clear():
     assistant.clear()
     return {"status": "cleared"}
+
+
+# Static frontend serving
+index_path = Path("frontend/dist/index.html")
+if not index_path.exists():
+    raise RuntimeError("ERROR: Frontend not built. Run 'npm run build' in the frontend directory before starting.")
+
+app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
+
+@app.get("/")
+async def serve_index():
+    return FileResponse(Path("frontend/dist/index.html"))
