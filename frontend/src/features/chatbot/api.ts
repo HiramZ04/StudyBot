@@ -51,7 +51,8 @@ export async function listFiles(): Promise<FileEntry[]> {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error ?? `Request failed with status ${res.status}`);
     }
-    return res.json();
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.files ?? []);
 }
 
 export async function uploadFile(file: File): Promise<void> {
@@ -64,6 +65,10 @@ export async function uploadFile(file: File): Promise<void> {
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error ?? `Request failed with status ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.status !== "success") {
+        throw new Error(data.error || "File upload failed");
     }
 }
 

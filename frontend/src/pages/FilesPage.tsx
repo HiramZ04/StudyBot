@@ -64,15 +64,17 @@ export default function FilesPage() {
       {files.length === 0 ? (
         <p>No files loaded.</p>
       ) : (
-        files.map((f) => (
-          <div className="file-row"key={f.fileName}>
-            <span className="file-name">{f.fileName}</span>
-            <span className="file-type">{f.type}</span>
-            <button className="btn-danger" onClick={() => handleDelete(f.fileName)}>
-              Delete
-            </button>
-          </div>
-        ))
+        <>
+          {files.map((f) => (
+            <div className="file-row" key={f.fileName}>
+              <span className="file-name">{f.fileName}</span>
+              <span className="file-type">{f.type}</span>
+              <button className="btn-danger" onClick={() => handleDelete(f.fileName)}>
+                Delete
+              </button>
+            </div>
+          ))}
+        </>
       )}
     </div>
   );

@@ -181,10 +181,11 @@ class Assistant:
     def ask(self, question: str, k: int | None = None) -> str:
         """Generates an answer from retrieved context and conversation history."""
         if not self.chunks:
-            return (
-                "No study materials are loaded. "
-                "Please add files to the uploads/ folder and restart."
-            )
+            return {
+                "response": "No study materials are loaded. "
+                            "Please add files to the uploads/ folder and restart.",
+                "sources": []
+            }
 
         if k is None:
             k = self.top_k
@@ -192,7 +193,10 @@ class Assistant:
         retrieved = retrieve(question, self.index, self.model, self.chunks, k=k)
 
         if retrieved and retrieved[0]["score"] == 0:
-            return "No relevant information found in the uploaded materials."
+            return {
+                "response": "No relevant information found in the uploaded materials.",
+                "sources": []
+            }
 
         context = "\n\n".join([
             f"[Source: {r['metadata']['filename']} ({r['metadata']['type']})]\n{r['text']}"
@@ -213,7 +217,22 @@ class Assistant:
         self.history.append({"role": "user", "content": context_question})
         self.history.append({"role": "assistant", "content": response})
 
-        return response
+        sources = []
+        seen = set()
+        for r in retrieved:
+            filename = r['metadata']['filename']
+            if filename not in seen:
+                seen.add(filename)
+                sources.append({
+                    "filename": filename,
+                    "type": r['metadata']['type'],
+                    "score": r['score']
+                })
+                
+        return {
+            "response": response,
+            "sources": sources
+        }
 
     def summarize(self, topic: str | None = None) -> dict[str, Any]:
         """Generates a structured study summary, optionally focused on a topic.

@@ -32,14 +32,14 @@ export default function ChatPage() {
                 placeholder="Ask a question about your study materials..."
             />
             <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
-                {error && <p className="error">{error}</p>}
+                {loading ? "Processing..." : "Ask"}
             </button>
             {error && <p className="error">{error}</p>}
             {response && (
                 <div className="card">
                     <p className="response-text">{response.response}</p>
                     <div className="sources">
-                        {response.sources.map((s) => (
+                        {(response.sources?? []).map((s) => (
                             <span key={s.filename} className="source-chip">
                                 {s.filename}
                             </span>

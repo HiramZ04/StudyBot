@@ -41,7 +41,7 @@ app = FastAPI(title="StudyBot API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000"],
+    allow_origins=["http://localhost:8000", "http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -127,7 +127,16 @@ def quiz(body: QuizRequest):
 
 @app.get("/files")
 def files():
-    return {"files": assistant.list_files_json()}
+    raw = assistant.list_files_json()
+    # different on frontend
+    return [
+        {
+            "fileName": f["filename"],
+            "type": f["type"],
+            "source": f["source"],
+        }
+        for f in raw
+    ]
 
 
 @app.delete("/clear")
