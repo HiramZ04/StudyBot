@@ -29,7 +29,7 @@ export default function App() {
                             <span className="panel-title">Sources</span>
                         </div>
                         <button className="panel-toggle" onClick={() => setSourcesOpen(o => !o)}>
-                            // AI used for arrows
+                            {/* AI used for arrows */}
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 {sourcesOpen ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
                             </svg>
