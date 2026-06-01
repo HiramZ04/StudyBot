@@ -16,9 +16,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from rag import Assistant
+from backend.rag import Assistant
 
 load_dotenv()
 
@@ -45,6 +46,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Static frontend serving
+index_path = Path("frontend/dist/index.html")
+if not index_path.exists():
+    raise RuntimeError("ERROR: Frontend not built. Run 'npm run build' in the frontend directory before starting.")
+
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+
+# LLM Assistant section
 
 assistant = Assistant.from_config(load_config_from_env())
 
