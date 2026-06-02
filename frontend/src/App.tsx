@@ -16,7 +16,7 @@ export default function App() {
         <>
             <div className="app-shell">
                 <header className="topbar">
-                    <h1>StudyBot</h1>
+                    <div className="topbar-text">StudyBot</div>
                 </header>
             </div>
 
@@ -50,7 +50,12 @@ export default function App() {
                         </div>
                     </div>
                     <div className="panel-body">
-                        {centerTab === "chat" ? <ChatPage /> : <SummaryPage />}
+                        <div className={`center-tab-panel ${centerTab === "chat" ? "active" : ""}`}>
+                            <ChatPage />
+                        </div>
+                        <div className={`center-tab-panel ${centerTab === "summary" ? "active" : ""}`}>
+                            <SummaryPage />
+                        </div>
                     </div>
                 </div>
 

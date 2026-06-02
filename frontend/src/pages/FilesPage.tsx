@@ -56,14 +56,31 @@ export default function FilesPage() {
   return (
     <div>
       <h1>Files</h1>
-      <input type="file" accept=".pdf,.txt,.md,.pptx,.docx" onChange={handleUpload} disabled={loading} />
-      <button className="btn-danger" onClick={handleClear}>
-        Clear All
-      </button>
-      {error && <p className="error">{error}</p>}
-      {files.length === 0 ? (
-        <p>No files loaded.</p>
-      ) : (
+      
+      <div className="file-upload-wrapper">
+        <label 
+          htmlFor="file-picker" 
+          className={`btn-upload-label ${loading ? "disabled" : ""}`}
+        >
+          {loading ? "Uploading..." : "Browse Files"}
+        </label>
+        <input 
+          id="file-picker"
+          type="file" 
+          accept=".pdf,.txt,.md,.pptx,.docx" 
+          onChange={handleUpload} 
+          disabled={loading} 
+          className="file-upload-input"
+        />
+        <button className="btn-danger" onClick={handleClear}>
+          Clear All
+        </button>
+      </div>
+
+        {error && <p className="error">{error}</p>}
+        {files.length === 0 ? (
+          <p>No files loaded.</p>
+        ) : (
         <>
           {files.map((f) => (
             <div className="file-row" key={f.fileName}>
