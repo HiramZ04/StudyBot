@@ -9,67 +9,58 @@ interface QuizQuestion {
   explanation: string;
 }
 
+// used AI to improve parsing for quiz
 function parseQuiz(raw: string): QuizQuestion[] {
   const questions: QuizQuestion[] = [];
-  const text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalized = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const flat = normalized.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
 
-  // split by lines that start with number + ., * for correct answer
-  const blocks = text.split(/\n(?=\*{0,2}\s*\d+\.\s)/);
+  const blockRegex = /(\d+)\.\s*(.*?)(?=\s+\d+\.\s+|$)/g;
+  let blockMatch: RegExpExecArray | null;
 
-  for (const block of blocks) {
-    const lines = block.trim().split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length < 3) continue;
+  while ((blockMatch = blockRegex.exec(flat)) !== null) {
+    const block = blockMatch[2].trim();
+    if (!block) continue;
 
-    const questionText = lines[0]
-      .replace(/^\*{0,2}\s*\d+\.\s*\*{0,2}/, "")
-      .replace(/\*+$/, "")
-      .trim();
-    if (!questionText) continue;
+    const answerMatch = block.match(/(?:Correct\s*answer|Answer)\s*:?\s*([A-D])/i);
+    const correctLetter = answerMatch ? answerMatch[1].toUpperCase() : "";
 
+    let mainPart = block;
+    let explanation = "";
+    if (answerMatch && answerMatch.index !== undefined) {
+      const answerIndex = answerMatch.index;
+      mainPart = block.slice(0, answerIndex).trim();
+      explanation = block.slice(answerIndex + answerMatch[0].length).trim();
+      explanation = explanation.replace(/^[:\-–\s]+/, "");
+    }
+
+    const optionRegex = /([A-D])[).]\s*([^A-D]+?)(?=\s+[A-D][).]\s+|$)/g;
     const options: { letter: string; text: string }[] = [];
-    let correctLetter = "";
-    const explanationParts: string[] = [];
-    let inExplanation = false;
+    let firstOptionIndex = -1;
+    let optionMatch: RegExpExecArray | null;
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-
-      // explanation bit
-      const expMatch = line.match(/^\*{0,2}Explanation\*{0,2}:?\s*\*{0,2}(.*)/i);
-      if (expMatch) {
-        inExplanation = true;
-        if (expMatch[1].trim()) explanationParts.push(expMatch[1].trim());
-        continue;
-      }
-      if (inExplanation) { explanationParts.push(line); continue; }
-
-      // answers
-      const answerMatch = line.match(/^\*{0,2}Answer\*{0,2}:?\s*\*{0,2}\s*([A-D])[).]/i);
-      if (answerMatch) { correctLetter = answerMatch[1]; continue; }
-
-      const optMatch = line.match(/^([A-D])[).]\s+(.+)$/);
-      if (optMatch) {
-        options.push({ letter: optMatch[1], text: optMatch[2].trim() });
-        continue;
-      }
-      
-      if (options.length === 0 && /^[A-D][).]/.test(line)) {
-        for (const m of line.matchAll(/([A-D])[).]\s+(.+?)(?=\s+[A-D][).]|$)/g)) {
-          options.push({ letter: m[1], text: m[2].trim() });
-        }
-      }
-
-      }
-
-      if (options.length > 0) {
-        questions.push({
-          question: questionText,
-          options,
-          correctLetter,
-          explanation: explanationParts.join(" ").trim(),
+    while ((optionMatch = optionRegex.exec(mainPart)) !== null) {
+      if (firstOptionIndex < 0) firstOptionIndex = optionMatch.index;
+      options.push({
+        letter: optionMatch[1].toUpperCase(),
+        text: optionMatch[2].trim(),
       });
     }
+
+    if (options.length < 2 || firstOptionIndex < 0) continue;
+
+    let questionText = mainPart.slice(0, firstOptionIndex).trim();
+    questionText = questionText.replace(/^["'`]+|["'`]+$/g, "").replace(/[:\-–\s]+$/, "");
+    if (!questionText) continue;
+
+    questions.push({
+      question: questionText,
+      options,
+      correctLetter,
+      explanation,
+    });
   }
+
   return questions;
 }
 

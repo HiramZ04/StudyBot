@@ -335,7 +335,15 @@ class Assistant:
             f"Generate {num_questions} quiz questions"
             + (f" about '{topic}'" if topic else " based on the study materials")
             + ". For each question provide 4 multiple-choice options (A, B, C, D) "
-            + "and indicate the correct answer with a brief explanation."
+            + "and indicate the correct answer with a brief explanation. "
+            + "Use this exact format for each question, with no extra text between questions: "
+            + "\n1. <question>" 
+            + "\nA) <option>" 
+            + "\nB) <option>" 
+            + "\nC) <option>" 
+            + "\nD) <option>" 
+            + "\nCorrect answer: <A/B/C/D>" 
+            + "\nExplanation: <one sentence>"
         )
 
         response = self.client.chat.completions.create(
