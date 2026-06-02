@@ -490,29 +490,6 @@ body {
    overflow: hidden; 
 }
 
-.chat-send-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 96px;
-  height: 44px;
-  margin-left: 10px;
-  color: #0e1210;
-  font-weight: 700;
-  border-radius: 999px;
-  box-shadow: 0 10px 20px rgba(34, 197, 94, 0.18);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-}
-
-.chat-send-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 24px rgba(34, 197, 94, 0.26);
-}
-
-.chat-send-btn:disabled {
-  opacity: 0.45;
-  box-shadow: none;
-}
 
 .chat-messages {
     flex: 1;
