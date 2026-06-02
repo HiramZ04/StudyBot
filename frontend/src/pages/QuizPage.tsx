@@ -146,6 +146,7 @@ export default function QuizPage() {
           value={topic}
           onChange={e => setTopic(e.target.value)}
           placeholder="Topic (optional)"
+          className="quiz-topic-input"
         />
         <div className="quiz-num-row">
           <span className="quiz-num-label">Questions</span>

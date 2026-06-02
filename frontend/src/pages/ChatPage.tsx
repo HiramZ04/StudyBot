@@ -111,7 +111,7 @@ export default function ChatPage() {
                         className="chat-send-btn"
                         onClick={handleSubmit}
                         disabled={loading || !input.trim()}
-                    > Send
+                    > {loading ? "Sending..." : "Send"}
                     </button>
                 </div>
             </div>
